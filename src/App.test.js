@@ -4,12 +4,11 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 import App from './App';
 
-test('renders learn react link', () => {
-  const { getByText } = render(
+test('renders chat panel', () => {
+  const { getByTestId } = render(
     <Provider store={store}>
       <App />
     </Provider>
   );
-
-  expect(getByText(/learn/i)).toBeInTheDocument();
+  expect(getByTestId(/chat-element/i)).toBeInTheDocument();
 });
