@@ -84,7 +84,7 @@ const getLast = (list = [], param) => {
   return [...list].sort((a, b)=> b[param] - a[param])[0];
 }
 
-export const selectConversations = (state, name = '') => {
+export const selectConversations = (state) => {
   return state.chat.contacts.map(contact=>{
     let lastMessage = getLast(contact.history, 'date');
     return {
