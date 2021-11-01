@@ -6,7 +6,7 @@ import { selectConversations, selectActiveChat, activateChat, sendMessage, searc
 export const MainLayout = ()=> {
     const dispatch = useDispatch();
     const inputRef = useRef();
-    const [msgInputValue, setMsgInputValue] = useState("message");
+    const [msgInputValue, setMsgInputValue] = useState("");
 
     const handleSend = message => {
       dispatch(sendMessage(message));
