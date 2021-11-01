@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { fetchMessage } from './chatAPI';
 export const initialState = {
   activeChat: 'Lilly',
+  search: '',
   contacts: [
     {
       id: 'Lilly',
@@ -80,21 +81,24 @@ export const initialState = {
 };
 
 const getLast = (list = [], param) => {
-  return [...list].sort((a, b)=> b[param] - a[param]);
+  return [...list].sort((a, b)=> b[param] - a[param])[0];
 }
 
-export const selectConversations = (state) => {
+export const selectConversations = (state, name = '') => {
   return state.chat.contacts.map(contact=>{
-    let lastMessage = getLast(contact.history, 'date')[0];
+    let lastMessage = getLast(contact.history, 'date');
     return {
     id: contact.id,
     lastMessage: lastMessage?.message,
     lastSender: lastMessage?.direction === 'outgoing'? 'me': contact.name,
+    lastDate: lastMessage?.date,
     status: contact.status,
     avatar: contact.avatar,
     name: contact.name,
     active: contact.id===state.chat.activeChat
   }})
+  .sort((a, b)=> b.lastDate - a.lastDate)
+  .filter(conversation=>conversation.name.match(new RegExp(state.chat.search, 'i')))
 }
 
 export const selectActiveChat = (state) => {
@@ -123,6 +127,9 @@ export const chatSlice = createSlice({
     activateChat: (state, action) => {
       state.activeChat = action.payload;
     },
+    searchContact: (state, action) => {
+      state.search = action.payload;
+    }
   },
   
   // The `extraReducers` field lets the slice handle actions defined elsewhere,
@@ -148,6 +155,6 @@ export const chatSlice = createSlice({
       });
   },
 });
-export const { activateChat } = chatSlice.actions;
+export const { activateChat, searchContact } = chatSlice.actions;
 // export const 
 export default chatSlice.reducer;

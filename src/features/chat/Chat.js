@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput, Sidebar, Search, ConversationList, Conversation, Avatar, ConversationHeader, EllipsisButton, TypingIndicator, SendButton } from '@chatscope/chat-ui-kit-react';
-import { selectConversations, selectActiveChat, activateChat, sendMessage } from './chatSlice';
+import { selectConversations, selectActiveChat, activateChat, sendMessage, searchContact } from './chatSlice';
 
 export const MainLayout = ()=> {
     const dispatch = useDispatch();
     const inputRef = useRef();
-    const [msgInputValue, setMsgInputValue] = useState("");
+    const [msgInputValue, setMsgInputValue] = useState("message");
 
     const handleSend = message => {
       dispatch(sendMessage(message));
@@ -23,7 +23,7 @@ export const MainLayout = ()=> {
     }}>
       <MainContainer data-testid="chat-element" responsive>                
         <Sidebar position="left" scrollable={false}>
-          <Search placeholder="Search..." />
+          <Search placeholder="Search..." onChange={search => dispatch(searchContact(search))} />
           <ConversationList>  
             {converstions.map(c=><Conversation key={c.id} name={c.name} lastSenderName={c.lastSender} info={c.lastMessage} onClick={()=>dispatch(activateChat(c.id))} active={c.active}>
               <Avatar src={c.avatar} name={c.name} status={c.status} />
