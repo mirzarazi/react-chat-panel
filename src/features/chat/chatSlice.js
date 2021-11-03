@@ -1,8 +1,10 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { fetchMessage } from './chatAPI';
+import postMessage from './chatAPI';
+
 export const initialState = {
   activeChat: 'Lilly',
   search: '',
+  draft: '',
   contacts: [
     {
       id: 'Lilly',
@@ -10,7 +12,8 @@ export const initialState = {
       status: 'available',
       avatar: 'https://chatscope.io/storybook/react/static/media/lilly.62d4acff.svg',
       activity: 'idle',
-      history:[
+      draft: '',
+      history: [
         {
           direction: 'outgoing',
           message: 'hello',
@@ -27,7 +30,7 @@ export const initialState = {
           date: 3,
         },
 
-      ]
+      ],
     },
     {
       id: 'Joe',
@@ -35,7 +38,8 @@ export const initialState = {
       status: 'dnd',
       avatar: 'https://chatscope.io/storybook/react/static/media/joe.641da105.svg',
       activity: 'idle',
-      history:[
+      draft: '',
+      history: [
         {
           direction: 'outgoing',
           message: 'hello',
@@ -45,11 +49,11 @@ export const initialState = {
           direction: 'incoming',
           message: 'hello',
           date: 2,
-          status: 'unread'
+          status: 'unread',
         },
 
-      ]
-      
+      ],
+
     },
     {
       id: 'Kai',
@@ -57,7 +61,8 @@ export const initialState = {
       status: 'away',
       avatar: 'https://chatscope.io/storybook/react/static/media/kai.b62f69dc.svg',
       activity: 'idle',
-      history:[
+      draft: '',
+      history: [
         {
           direction: 'outgoing',
           message: 'hello',
@@ -74,50 +79,51 @@ export const initialState = {
           date: 3,
         },
 
-      ]
-      
-    }
-  ]
+      ],
+
+    },
+  ],
 };
 
-const getLast = (list = [], param) => {
-  return [...list].sort((a, b)=> b[param] - a[param])[0];
-}
+const getLast = (list = [], param) => [...list].sort((a, b) => b[param] - a[param])[0];
 
-export const selectConversations = (state) => {
-  return state.chat.contacts.map(contact=>{
-    let lastMessage = getLast(contact.history, 'date');
-    return {
+export const selectConversations = (state) => state.chat.contacts.map((contact) => {
+  const lastMessage = getLast(contact.history, 'date');
+  const hasUnread = contact.history.find((message) => message.status === 'unread') != null;
+  return {
     id: contact.id,
     lastMessage: lastMessage?.message,
-    lastSender: lastMessage?.direction === 'outgoing'? 'me': contact.name,
+    lastSender: lastMessage?.direction === 'outgoing' ? 'me' : contact.name,
     lastDate: lastMessage?.date,
+    hasUnread,
     status: contact.status,
     avatar: contact.avatar,
     name: contact.name,
-    active: contact.id===state.chat.activeChat
-  }})
-  .sort((a, b)=> b.lastDate - a.lastDate)
-  .filter(conversation=>conversation.name.match(new RegExp(state.chat.search, 'i')))
-}
+    active: contact.id === state.chat.activeChat,
+  };
+})
+  .sort((a, b) => b.lastDate - a.lastDate)
+  .filter((conversation) => conversation.name.match(new RegExp(state.chat.search, 'i')));
 
 export const selectActiveChat = (state) => {
-  const contact = state.chat.contacts.find(contact=>contact.id===state.chat.activeChat);
+  const activeConversation = state.chat.contacts
+    .find((contact) => contact.id === state.chat.activeChat);
   return {
-    avatar: contact.avatar,
-    name: contact.name,
-    id: contact.id,
-    activity: contact.activity,
-    messages: [...contact.history].sort((a, b)=> a.date - b.date)
-  }
-}
+    avatar: activeConversation.avatar,
+    name: activeConversation.name,
+    id: activeConversation.id,
+    activity: activeConversation.activity,
+    draft: activeConversation.draft,
+    messages: [...activeConversation.history].sort((a, b) => a.date - b.date),
+  };
+};
 
 export const sendMessage = createAsyncThunk(
   'chat/send',
-  async (message) => {
-    const response = await fetchMessage(message);
+  async (payload) => {
+    const response = await postMessage(payload);
     return response.data;
-  }
+  },
 );
 
 export const chatSlice = createSlice({
@@ -125,36 +131,49 @@ export const chatSlice = createSlice({
   initialState,
   reducers: {
     activateChat: (state, action) => {
-      state.activeChat = action.payload;
+      const newState = state;
+      newState.activeChat = action.payload;
+      newState.contacts.find((contact) => contact.id === state.activeChat).history
+        .forEach((message) => {
+          const updatedMessage = message;
+          updatedMessage.status = '';
+        });
     },
     searchContact: (state, action) => {
-      state.search = action.payload;
-    }
+      const newState = state;
+      newState.search = action.payload;
+    },
+    saveDraft: (state, action) => {
+      const newState = state;
+      newState.contacts.find((contact) => contact.id === state.activeChat).draft = action.payload;
+    },
+
   },
-  
-  // The `extraReducers` field lets the slice handle actions defined elsewhere,
-  // including actions generated by createAsyncThunk or in other slices.
+
   extraReducers: (builder) => {
     builder
-      .addCase(sendMessage.pending, (state, action) => {
-        state.contacts.find(contact=>contact.id === state.activeChat).history.push( {
-          message: action.meta.arg,
+      .addCase(sendMessage.pending, (state) => {
+        const converstions = state.contacts.find((contact) => contact.id === state.activeChat);
+        converstions.history.push({
+          message: converstions.draft,
           direction: 'outgoing',
           date: new Date().getTime(),
-        })
-        state.contacts.find(contact=>contact.id === state.activeChat).activity = 'typing'
-        console.log(state.contacts.find(contact=>contact.id === state.activeChat).activity )
+        });
+        converstions.activity = 'typing';
+        converstions.draft = '';
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
-        state.contacts.find(contact=>contact.id === state.activeChat).history.push( {
-          message: action.payload,
+        const converstions = state.contacts.find((contact) => contact.id === action.payload.id);
+        converstions.history.push({
+          message: action.payload.message,
           direction: 'incoming',
           date: new Date().getTime(),
-        })
-        state.contacts.find(contact=>contact.id === state.activeChat).activity = 'idle'
+          status: state.activeChat !== action.payload.id ? 'unread' : '',
+        });
+        converstions.activity = 'idle';
       });
   },
 });
-export const { activateChat, searchContact } = chatSlice.actions;
-// export const 
+export const { activateChat, searchContact, saveDraft } = chatSlice.actions;
+// export const
 export default chatSlice.reducer;
